@@ -8,8 +8,16 @@ import time
 # Constants for mouse events
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
+
+# x, y ratio
 x_ratio = 1
 y_ratio = 1
+
+# No scroll counter
+no_scroll_counter = 0
+
+# Delay
+delay = 10
 
 # Define paths and regions
 IMAGE_PATHS = {
@@ -17,17 +25,41 @@ IMAGE_PATHS = {
     "scroll": "images/scroll.png",
     "bag": "images/bag.png",
     "x_mark": "images/x-mark.png",
+    "res": "images/res.png",
 }
 
 REGIONS = {
     "question_mark": (int(180 * x_ratio), int(350 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
     "scroll": (int(840 * x_ratio), int(300 * y_ratio), int(710 * x_ratio), int(350 * y_ratio)),
     "bag": (int(1690 * x_ratio), int(360 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
-    "x_mark": (int(1690 * x_ratio), int(410 * y_ratio), int(50 * x_ratio), int(50 * y_ratio))
+    "x_mark": (int(1690 * x_ratio), int(410 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
+    "res": (int(1508 * x_ratio), int(789 * y_ratio), int(229 * x_ratio), int(54 * y_ratio)),
 }
 
 
 # Helper Functions
+def update_no_scroll_counter(num):
+    global no_scroll_counter
+
+    if num == 0:
+        no_scroll_counter = num
+        print("Reset no scroll counter = 0")
+    else:
+        no_scroll_counter = no_scroll_counter + num
+        print(f"No scroll counter: {no_scroll_counter}")
+
+
+def update_delay(is_over_limit):
+    global delay
+
+    if is_over_limit:
+        delay = 600
+        print("Update delay to 10 minute.")
+    else:
+        delay = 10
+        print("Reset delay to 10 sec.")
+
+
 def click_at(x, y):
     """Simulates a mouse click at the specified screen coordinates."""
     time.sleep(1)
@@ -55,6 +87,7 @@ def update_ratio_from_your_screen_size():
     global x_ratio, y_ratio
     x_ratio = screen_width / 1920
     y_ratio = screen_height / 1080
+
 
 def on_move(x, y):
     # Get the RGB color of the pixel at the current mouse position
@@ -93,7 +126,7 @@ def match_template(target_image, region, confidence=0.8):
     result = cv2.matchTemplate(gray_screenshot, template, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
-    print(f"Actual/Confidence (%) : {(max_val * 100):.2f}/{confidence * 100}")
+    # print(f"Actual/Confidence (%) : {(max_val * 100):.2f}/{confidence * 100}")
 
     if max_val >= confidence:
         template_height, template_width = template.shape
@@ -101,6 +134,12 @@ def match_template(target_image, region, confidence=0.8):
         center_y = max_loc[1] + template_height // 2
         return True, region[0] + center_x, region[1] + center_y
     return False, 0, 0
+
+
+def are_you_dead():
+    """Checks if you died."""
+    print("Checking if you died...")
+    return match_template(IMAGE_PATHS["res"], REGIONS["res"], confidence=0.7)[0]
 
 
 # Quest Management Functions
@@ -139,6 +178,12 @@ def close_the_bag():
 
 
 def auto_scroll_quest():
+    """Check if you died"""
+    if are_you_dead():
+        print("You died!, go respawn...")
+        click_at2(1510, 790)
+        click_at2(1306, 623)
+
     """Main logic for handling the quest scrolls."""
     if is_already_have_quest():
         if is_quest_finished():
@@ -160,9 +205,12 @@ def auto_scroll_quest():
             close_the_bag()
             print("Activating the quest...")
             click_at2(180, 350)
+            update_no_scroll_counter(0)
+            update_delay(False)
         else:
             print("Scroll not found.")
             close_the_bag()
+            update_no_scroll_counter(1)
 
 
 # Main Function
@@ -179,7 +227,10 @@ def main():
         print("Script is running...")
         while True:
             auto_scroll_quest()
-            time.sleep(10)  # Delay between iterations
+
+            if no_scroll_counter >= 5:
+                update_delay(True)
+            time.sleep(delay)  # Delay between iterations
     except KeyboardInterrupt:
         print("\nProgram interrupted by Ctrl + C")
 
