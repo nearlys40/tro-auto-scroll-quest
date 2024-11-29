@@ -1,5 +1,7 @@
 import pyautogui
 from pynput import mouse
+import pygetwindow as gw
+from screeninfo import get_monitors
 import cv2
 import numpy as np
 import ctypes
@@ -29,7 +31,7 @@ IMAGE_PATHS = {
 }
 
 REGIONS = {
-    "question_mark": (int(180 * x_ratio), int(350 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
+    "question_mark": (int(180 * x_ratio), int(355 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
     "scroll": (int(840 * x_ratio), int(300 * y_ratio), int(710 * x_ratio), int(350 * y_ratio)),
     "bag": (int(1690 * x_ratio), int(360 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
     "x_mark": (int(1690 * x_ratio), int(410 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
@@ -38,12 +40,45 @@ REGIONS = {
 
 
 # Helper Functions
+def find_game_window():
+    # Find the TRO game window by its title
+    windows = gw.getWindowsWithTitle("The Ragnarok")  # Replace "The Ragnarok" with your game window's title
+    if not windows:
+        print("The Ragnarok window not found.")
+        return None
+    return windows[0]  # Assuming you want the first matching window
+
+
+def get_screen_of_window(window):
+    # Get the coordinates of the window
+    window_x, window_y, window_width, window_height = window.left, window.top, window.width, window.height
+
+    print(window)
+
+    # Iterate over all monitors
+    for monitor in get_monitors():
+        print(monitor)
+        monitor_x = monitor.x
+        monitor_y = monitor.y
+        monitor_width = monitor.width
+        monitor_height = monitor.height
+
+        # Check if the window is within this monitor's bounds
+        if (
+                monitor_x <= window_x < monitor_x + monitor_width and
+                monitor_y <= window_y < monitor_y + monitor_height
+        ):
+            return monitor  # Return the monitor object
+
+    return None  # No matching monitor found
+
+
 def update_no_scroll_counter(num):
     global no_scroll_counter
 
     if num == 0:
         no_scroll_counter = num
-        print("Reset no scroll counter = 0")
+        # print("Reset no scroll counter = 0")
     else:
         no_scroll_counter = no_scroll_counter + num
         print(f"No scroll counter: {no_scroll_counter}")
@@ -57,7 +92,7 @@ def update_delay(is_over_limit):
         print("Update delay to 10 minute.")
     else:
         delay = 10
-        print("Reset delay to 10 sec.")
+        # print("Reset delay to 10 sec.")
 
 
 def click_at(x, y):
@@ -100,6 +135,7 @@ def on_move(x, y):
 
 
 def is_quest_finished():
+    # print("Checking if the quest has been finished...")
     x, y, target_color, tolerance = int(472 * x_ratio), int(360 * y_ratio), (247, 85, 82), 0
 
     # Get the pixel color at (x, y)
@@ -138,15 +174,15 @@ def match_template(target_image, region, confidence=0.8):
 
 def are_you_dead():
     """Checks if you died."""
-    print("Checking if you died...")
+    # print("Checking if you died...")
     return match_template(IMAGE_PATHS["res"], REGIONS["res"], confidence=0.7)[0]
 
 
 # Quest Management Functions
 def is_already_have_quest():
     """Checks if the 'question mark' image is present."""
-    print("Checking if the quest is already taken...")
-    return match_template(IMAGE_PATHS["question_mark"], REGIONS["question_mark"], confidence=0.7)[0]
+    # print("Checking if the quest is already taken...")
+    return match_template(IMAGE_PATHS["question_mark"], REGIONS["question_mark"], confidence=0.6)[0]
 
 
 def find_scroll_in_the_bag():
@@ -180,14 +216,14 @@ def close_the_bag():
 def auto_scroll_quest():
     """Check if you died"""
     if are_you_dead():
-        print("You died!, go respawn...")
+        print("You died!, go to respawn...")
         click_at2(1510, 790)
         click_at2(1306, 623)
 
     """Main logic for handling the quest scrolls."""
     if is_already_have_quest():
         if is_quest_finished():
-            print("Quest finished. Clicking to turn in the quest.")
+            print("Quest finished. Clicking to get reward.")
             click_at2(180, 350)
             click_at2(180, 350)
     else:
@@ -233,6 +269,8 @@ def main():
             time.sleep(delay)  # Delay between iterations
     except KeyboardInterrupt:
         print("\nProgram interrupted by Ctrl + C")
+
+    # is_already_have_quest()
 
 
 if __name__ == "__main__":
