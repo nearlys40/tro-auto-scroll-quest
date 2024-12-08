@@ -28,6 +28,8 @@ IMAGE_PATHS = {
     "bag": "images/bag.png",
     "x_mark": "images/x-mark.png",
     "res": "images/res.png",
+    "rearrange": "images/rearrange.png",
+    "still_active": "images/already-have-quest.png",
 }
 
 REGIONS = {
@@ -36,6 +38,8 @@ REGIONS = {
     "bag": (int(1690 * x_ratio), int(360 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
     "x_mark": (int(1690 * x_ratio), int(410 * y_ratio), int(50 * x_ratio), int(50 * y_ratio)),
     "res": (int(1508 * x_ratio), int(789 * y_ratio), int(229 * x_ratio), int(54 * y_ratio)),
+    "rearrange": (int(840 * x_ratio), int(300 * y_ratio), int(710 * x_ratio), int(350 * y_ratio)),
+    "still_active": (int(668 * x_ratio), int(338 * y_ratio), int(1249 * x_ratio), int(762 * y_ratio)),
 }
 
 
@@ -103,12 +107,12 @@ def click_at(x, y):
     ctypes.windll.user32.mouse_event(MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
 
-def click_at2(x, y):
+def click_at2(x, y, sec=1):
     """Simulates a mouse click at the specified screen coordinates."""
     x_with_ratio = int(x * x_ratio)
     y_with_ratio = int(y * y_ratio)
 
-    time.sleep(1)
+    time.sleep(sec)
 
     ctypes.windll.user32.SetCursorPos(x_with_ratio, y_with_ratio)
     ctypes.windll.user32.mouse_event(MOUSEEVENTF_LEFTDOWN, x_with_ratio, y_with_ratio, 0, 0)
@@ -185,6 +189,25 @@ def is_already_have_quest():
     return match_template(IMAGE_PATHS["question_mark"], REGIONS["question_mark"], confidence=0.6)[0]
 
 
+def rearrange_items():
+    """Looks for the rearrange image within the bag region."""
+    print("Rearrange items in the bag...")
+    found, x, y = match_template(IMAGE_PATHS["rearrange"], REGIONS["rearrange"], confidence=0.8)
+    if found:
+        click_at(x, y)
+    else:
+        print("Rearrange icon not found.")
+
+
+def is_quest_still_active():
+    is_active, x, y = match_template(IMAGE_PATHS["still_active"], REGIONS["still_active"], confidence=0.8)
+    if is_active:
+        click_at(831, 700)
+        print("Quest still active...")
+    else:
+        print("Activating the quest...")
+
+
 def find_scroll_in_the_bag():
     """Looks for the scroll image within the bag region."""
     print("Searching for the scroll in the bag...")
@@ -232,15 +255,16 @@ def auto_scroll_quest():
             click_at(x1, y1)
 
         open_the_bag()
+        rearrange_items()
 
         found2, x2, y2 = find_scroll_in_the_bag()
         if found2:
             print("Scroll found. Using it...")
             click_at(x2, y2)  # Click the scroll
             click_at2(980, 910)  # Use the scroll
+            is_quest_still_active()
             close_the_bag()
-            print("Activating the quest...")
-            click_at2(180, 350)
+            click_at2(180, 350, 2)
             update_no_scroll_counter(0)
             update_delay(False)
         else:
@@ -269,8 +293,6 @@ def main():
             time.sleep(delay)  # Delay between iterations
     except KeyboardInterrupt:
         print("\nProgram interrupted by Ctrl + C")
-
-    # is_already_have_quest()
 
 
 if __name__ == "__main__":
